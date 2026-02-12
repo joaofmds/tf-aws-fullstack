@@ -1,9 +1,11 @@
 #!/bin/sh
+set -e
 
-export DATABASE_HOST=localhost
-export DATABASE_USER=root
-export DATABASE_PASS=secret
-export DATABASE_DBNAME=db_prova
-export UPLOAD_DIR=uploads
+: "${PORT:=8081}"
+: "${APP_WORKERS:=2}"
 
-uvicorn src.main:api --reload --port 8081 --host 0.0.0.0
+exec uvicorn src.main:api \
+  --host 0.0.0.0 \
+  --port "${PORT}" \
+  --workers "${APP_WORKERS}" \
+  --timeout-keep-alive 30

@@ -4,3 +4,6 @@ python-multipart
 sqlalchemy
 psycopg2-binary
 pandas
+boto3
+pydantic-settings
+alembic

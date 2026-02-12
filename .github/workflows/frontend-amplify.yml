@@ -1,0 +1,18 @@
+name: frontend-amplify
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-amplify.yml'
+
+jobs:
+  trigger-amplify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Amplify build via webhook
+        env:
+          AMPLIFY_WEBHOOK_URL: ${{ github.ref == 'refs/heads/main' && secrets.AMPLIFY_WEBHOOK_PROD || secrets.AMPLIFY_WEBHOOK_DEV }}
+        run: |
+          curl -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"

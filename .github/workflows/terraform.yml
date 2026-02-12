@@ -1,0 +1,39 @@
+name: terraform
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  plan-apply:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, prod]
+    defaults:
+      run:
+        working-directory: infra/envs/${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets[format('AWS_TERRAFORM_ROLE_ARN_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          aws-region: us-east-1
+      - run: terraform init
+      - run: terraform fmt -check -recursive ../..
+      - run: terraform validate
+      - run: terraform plan -var-file=terraform.tfvars -out=tfplan
+      - if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
