@@ -1,5 +1,3 @@
 #!/bin/sh
-
-export UPLOAD_DIR=uploads
-
+set -e
 python -m src.cron

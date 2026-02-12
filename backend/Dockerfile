@@ -21,9 +21,10 @@ WORKDIR /app
 
 COPY --from=builder /install /usr/local
 COPY ./src /app/src
+COPY ./start.sh /app/start.sh
 
-RUN mkdir -p /app/uploads
+RUN chmod +x /app/start.sh
 
 EXPOSE 8081
 
-CMD ["uvicorn", "src.main:api", "--host", "0.0.0.0", "--port", "8081"]
+CMD ["/app/start.sh"]

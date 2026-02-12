@@ -1,34 +1,29 @@
 from datetime import datetime
-import os
-import shutil
 import logging
-import sqlalchemy
-import pandas as pd
-
+from io import BytesIO
 from typing import List
 
-from fastapi import FastAPI, HTTPException, UploadFile
+import boto3
+import pandas as pd
+import sqlalchemy
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-DATABASE_URL = f"postgresql://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASS')}@{os.getenv('DATABASE_HOST')}/{os.getenv('DATABASE_DBNAME')}"
+from src.config import get_settings
+from src.db import engine
 
-engine = sqlalchemy.create_engine(DATABASE_URL)
+settings = get_settings()
 
-api = FastAPI()
-
-origins = [
-    "http://localhost:8080",
-    "http://localhost"
-]
+api = FastAPI(title="products-api", version="1.0.0")
 
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -41,77 +36,117 @@ class Product(BaseModel):
     quantity: float
 
 
+@api.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
 
 @api.get("/api")
 def index():
     return {"detail": "Hello World!"}
 
 
-def import_file_to_database(file_location: str):
-    df = pd.read_csv(file_location)
+@api.get("/healthz")
+def healthz():
+    try:
+        with engine.connect() as con:
+            con.execute(sqlalchemy.text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception as exc:
+        logging.exception(exc)
+        return JSONResponse(status_code=503, content={"status": "degraded"})
 
-    if df.columns.tolist() != ['name', 'cost_price', 'sale_price', 'quantity']:
-        raise HTTPException(
-            status_code=500, detail="O arquivo não está no formato correto!")
 
+def validate_and_parse_csv(raw_bytes: bytes) -> pd.DataFrame:
+    df = pd.read_csv(BytesIO(raw_bytes))
+    expected_columns = ["name", "cost_price", "sale_price", "quantity"]
+    if df.columns.tolist() != expected_columns:
+        raise HTTPException(status_code=400, detail="O arquivo não está no formato correto!")
+
+    if df.empty:
+        raise HTTPException(status_code=400, detail="Arquivo CSV vazio!")
+
+    return df
+
+
+def import_dataframe_to_database(df: pd.DataFrame):
     with engine.begin() as connection:
         rows = []
         for _, row in df.iterrows():
-            rows.append({
-                "name": row["name"],
-                "cost_price": row["cost_price"],
-                "sale_price": row["sale_price"],
-                "quantity": row["quantity"]
-            })
+            rows.append(
+                {
+                    "name": row["name"],
+                    "cost_price": row["cost_price"],
+                    "sale_price": row["sale_price"],
+                    "quantity": row["quantity"],
+                }
+            )
 
         connection.execute(
             sqlalchemy.text(
                 "INSERT INTO product.product(created_at, name, cost_price, sale_price, quantity) "
                 "VALUES (now(), :name, :cost_price, :sale_price, :quantity)"
             ),
-            rows
+            rows,
         )
+
+
+def upload_file_to_s3(raw_bytes: bytes, filename: str):
+    if not settings.upload_s3_bucket:
+        return
+
+    s3 = boto3.client("s3")
+    s3.put_object(
+        Bucket=settings.upload_s3_bucket,
+        Key=f"imports/{filename}",
+        Body=raw_bytes,
+        ContentType="text/csv",
+    )
 
 
 @api.post("/api/import_file")
 async def import_files(file: UploadFile):
     try:
-        upload_dir = os.getenv("UPLOAD_DIR")
-        filename = datetime.now().strftime("%Y_%m_%d_%H_%I_%S_%f.csv")
-        file_location = os.path.join(upload_dir, filename)
+        if not file.filename or not file.filename.endswith(".csv"):
+            raise HTTPException(status_code=400, detail="Envie um arquivo .csv")
 
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
+        raw_bytes = await file.read()
+        if len(raw_bytes) > settings.upload_max_mb * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Arquivo excede limite de upload")
 
-        import_file_to_database(file_location)
+        df = validate_and_parse_csv(raw_bytes)
+        generated_name = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f.csv")
+        upload_file_to_s3(raw_bytes, generated_name)
+        import_dataframe_to_database(df)
 
         return {"detail": "Importação realizada com sucesso!"}
-    except HTTPException as e:
-        logging.exception(e)
-        raise HTTPException(
-            status_code=500, detail=e.detail)
-    except Exception as e:
-        logging.exception(e)
-        raise HTTPException(
-            status_code=500, detail="Erro ao realizar importação!")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.exception(exc)
+        raise HTTPException(status_code=500, detail="Erro ao realizar importação!") from exc
 
 
 @api.get("/api/products", response_model=List[Product])
 async def get_products() -> List[Product]:
     products = []
     with engine.connect() as con:
-        res = con.execute(sqlalchemy.text( "SELECT * FROM product.product ORDER BY created_at DESC"))
+        res = con.execute(sqlalchemy.text("SELECT * FROM product.product ORDER BY created_at DESC"))
 
-    for r in res:
-       products.append(
+    for row in res:
+        products.append(
             Product(
-                id=r.id,
-                created_at=r.created_at,
-                name=r.name,
-                cost_price=r.cost_price,
-                sale_price=r.sale_price,
-                quantity=r.quantity
-            ),
+                id=row.id,
+                created_at=row.created_at,
+                name=row.name,
+                cost_price=row.cost_price,
+                sale_price=row.sale_price,
+                quantity=row.quantity,
+            )
         )
 
     return products

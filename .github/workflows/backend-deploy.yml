@@ -1,0 +1,57 @@
+name: backend-deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, prod]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets[format('AWS_DEPLOY_ROLE_ARN_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push backend
+        env:
+          ECR_BACKEND: ${{ secrets[format('ECR_BACKEND_REPO_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+        run: |
+          docker build -t $ECR_BACKEND:${GITHUB_SHA} backend
+          docker push $ECR_BACKEND:${GITHUB_SHA}
+      - name: Build and push cron
+        env:
+          ECR_CRON: ${{ secrets[format('ECR_CRON_REPO_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+        run: |
+          docker build -f backend/cron.Dockerfile -t $ECR_CRON:${GITHUB_SHA} backend
+          docker push $ECR_CRON:${GITHUB_SHA}
+      - name: Run DB migrations (one-off ECS task)
+        env:
+          CLUSTER: ${{ secrets[format('ECS_CLUSTER_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          SUBNETS: ${{ secrets[format('ECS_PRIVATE_SUBNETS_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          SG: ${{ secrets[format('ECS_SECURITY_GROUP_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          TASKDEF: ${{ secrets[format('ECS_BACKEND_TASKDEF_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+        run: |
+          aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASKDEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}'
+      - name: Deploy ECS backend
+        env:
+          CLUSTER: ${{ secrets[format('ECS_CLUSTER_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          SERVICE: ${{ secrets[format('ECS_SERVICE_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+        run: |
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment
