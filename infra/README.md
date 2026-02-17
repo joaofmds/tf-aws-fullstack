@@ -126,3 +126,74 @@ infra/
 - [ ] Upload/import CSV funcional (frontend Amplify -> ALB -> ECS -> RDS/S3).
 - [ ] CORS válido para os domínios dev/prod.
 - [ ] Alarmes de CloudWatch criados e visíveis.
+
+## Terraform remote state backend (S3 + DynamoDB)
+
+Este repositório inclui um bootstrap dedicado em `infra/bootstrap/tfstate-backend` para criar um backend remoto de produção para o Terraform:
+
+- Bucket S3 exclusivo para state (`<org>-<project>-<account>-<region>-tfstate`), com versionamento, criptografia e bloqueio público total.
+- Política `HTTPS-only` (nega tráfego sem TLS) e negação de `PutObject` sem KMS correto (quando `enable_kms = true`).
+- Tabela DynamoDB para locking (`LockID`) com `PAY_PER_REQUEST` e SSE habilitado.
+- Política IAM pronta para anexar em roles de CI/CD e operadores humanos.
+
+### 1) Bootstrap inicial (aplicar localmente uma vez)
+
+```bash
+cd infra/bootstrap/tfstate-backend
+terraform init
+terraform apply \
+  -var='aws_region=us-east-1' \
+  -var='org=minha-org' \
+  -var='project=tf-aws-fullstack' \
+  -var='environment=dev' \
+  -var='enable_kms=true'
+```
+
+> Dica: ative `-var='create_access_log_bucket=true'` se quiser logs de acesso do bucket de state em bucket separado.
+
+Após o `apply`, copie o output `recommended_backend_config`.
+
+### 2) Configurar o bloco backend "s3"
+
+Exemplo para `infra/envs/dev/backend.tf`:
+
+```hcl
+terraform {
+  backend "s3" {
+    bucket         = "<output tfstate_bucket_name>"
+    key            = "envs/dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "<output tfstate_dynamodb_table_name>"
+    encrypt        = true
+  }
+}
+```
+
+### 3) Migrar state local para remoto
+
+No diretório do ambiente:
+
+```bash
+cd infra/envs/dev
+terraform init -migrate-state
+```
+
+O Terraform perguntará se deseja mover o state local para o backend S3; responda `yes`.
+
+### 4) Estrutura recomendada de key por ambiente
+
+- `envs/dev/terraform.tfstate`
+- `envs/staging/terraform.tfstate`
+- `envs/prod/terraform.tfstate`
+
+Isso mantém isolamento lógico por ambiente no mesmo bucket, com histórico de versões habilitado.
+
+### 5) Permissões recomendadas para CI e operadores
+
+Use o output `terraform_backend_access_policy_arn` para anexar em uma role IAM (ex.: GitHub Actions OIDC role) ou use `terraform_backend_access_policy_json` para incorporar em uma política já existente.
+
+A política concede apenas:
+
+- S3: `ListBucket`, `GetObject`, `PutObject`, `DeleteObject`
+- DynamoDB lock table: `GetItem`, `PutItem`, `DeleteItem`, `UpdateItem`, `DescribeTable`
+- KMS (quando habilitado): `Encrypt`, `Decrypt`, `GenerateDataKey`, limitado ao contexto do bucket de state
