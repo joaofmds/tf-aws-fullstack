@@ -1,6 +1,3 @@
-# Input variables for configuring Amazon S3 storage resources.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming S3 resources."
   type        = string

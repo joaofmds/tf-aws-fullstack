@@ -1,6 +1,3 @@
-# Input variables for configuring VPC networking resources.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming VPC and subnet resources."
   type        = string

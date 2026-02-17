@@ -1,5 +1,3 @@
-# Output values exposed by the secrets module.
-
 output "db_secret_arn" {
   description = "ARN of the Secrets Manager secret storing database credentials."
   value       = aws_secretsmanager_secret.db_credentials.arn

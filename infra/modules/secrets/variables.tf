@@ -1,6 +1,3 @@
-# Input variables for configuring secret and parameter storage resources.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming secrets and parameters."
   type        = string

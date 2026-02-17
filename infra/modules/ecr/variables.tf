@@ -1,6 +1,3 @@
-# Input variables for configuring Amazon ECR repositories.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming ECR repositories."
   type        = string

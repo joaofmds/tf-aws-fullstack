@@ -1,6 +1,3 @@
-# Input variables for configuring ECS cluster, services, and scheduled tasks.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming ECS resources."
   type        = string

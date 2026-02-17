@@ -1,6 +1,3 @@
-# Input variables for configuring observability and monitoring resources.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming monitoring resources."
   type        = string

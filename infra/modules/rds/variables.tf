@@ -1,6 +1,3 @@
-# Input variables for configuring Amazon RDS resources.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming RDS resources."
   type        = string

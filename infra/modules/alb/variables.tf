@@ -1,6 +1,3 @@
-# Input variables for configuring the Application Load Balancer module.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming ALB resources."
   type        = string

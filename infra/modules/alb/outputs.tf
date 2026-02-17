@@ -1,5 +1,3 @@
-# Output values exposed by the Application Load Balancer module.
-
 output "alb_arn" {
   description = "ARN of the created Application Load Balancer."
   value       = aws_lb.this.arn

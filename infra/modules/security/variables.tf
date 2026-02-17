@@ -1,6 +1,3 @@
-# Input variables for configuring security groups.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming security groups."
   type        = string

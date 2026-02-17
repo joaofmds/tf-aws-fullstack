@@ -1,6 +1,3 @@
-# Input variables for configuring GitHub OIDC federation resources.
-
-# Naming
 variable "name_prefix" {
   description = "Prefix used when naming IAM OIDC resources."
   type        = string

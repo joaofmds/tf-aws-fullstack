@@ -1,5 +1,3 @@
-# Output values exposed by the Amazon RDS module.
-
 output "db_endpoint" {
   description = "Endpoint address of the provisioned RDS instance."
   value       = aws_db_instance.this.address
