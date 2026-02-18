@@ -46,6 +46,16 @@ jobs:
       - name: Terraform init
         run: terraform init
 
+      - name: Create terraform.tfvars
+        env:
+          TFVARS: ${{ secrets.TFVARS_DEV }}
+        run: |
+          if [ -z "$TFVARS" ]; then
+            echo "::error::Secret TFVARS_DEV is not set. Add the contents of infra/envs/dev/terraform.tfvars as repository secret TFVARS_DEV."
+            exit 1
+          fi
+          printf '%s' "$TFVARS" > terraform.tfvars
+
       - name: Terraform fmt (repo)
         run: terraform fmt -check -recursive ../..
 
@@ -87,6 +97,16 @@ jobs:
 
       - name: Terraform init
         run: terraform init
+
+      - name: Create terraform.tfvars
+        env:
+          TFVARS: ${{ secrets.TFVARS_PROD }}
+        run: |
+          if [ -z "$TFVARS" ]; then
+            echo "::error::Secret TFVARS_PROD is not set. Add the contents of infra/envs/prod/terraform.tfvars as repository secret TFVARS_PROD."
+            exit 1
+          fi
+          printf '%s' "$TFVARS" > terraform.tfvars
 
       - name: Terraform fmt (repo)
         run: terraform fmt -check -recursive ../..
