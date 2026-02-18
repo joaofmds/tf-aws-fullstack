@@ -123,11 +123,10 @@ locals {
   create_webhook = var.app_mode == "webhook" || var.enable_webhook
 }
 
-# IAM role for Amplify build (trust policy allows Amplify to assume it)
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
+# IAM role for Amplify build (optional; only when use_amplify_service_role = true)
 resource "aws_iam_role" "amplify_build" {
+  count = var.use_amplify_service_role ? 1 : 0
+
   name = "${local.name}-build"
 
   assume_role_policy = jsonencode({
@@ -139,14 +138,6 @@ resource "aws_iam_role" "amplify_build" {
           Service = "amplify.amazonaws.com"
         }
         Action = "sts:AssumeRole"
-        Condition = {
-          StringEquals = {
-            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
-          }
-          ArnLike = {
-            "aws:SourceArn" = "arn:aws:amplify:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:apps/*"
-          }
-        }
       }
     ]
   })
@@ -159,10 +150,11 @@ resource "aws_iam_role" "amplify_build" {
   })
 }
 
-# Minimal permissions for frontend build (logs, artifact storage)
 resource "aws_iam_role_policy" "amplify_build" {
+  count = var.use_amplify_service_role ? 1 : 0
+
   name   = "${local.name}-build"
-  role   = aws_iam_role.amplify_build.id
+  role   = aws_iam_role.amplify_build[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -176,12 +168,12 @@ resource "aws_iam_role_policy" "amplify_build" {
 }
 
 resource "aws_amplify_app" "this" {
-  name                  = local.name
-  repository            = var.app_mode == "connected" ? var.repository_url : null
-  oauth_token           = var.app_mode == "connected" ? var.github_oauth_token : null
-  build_spec            = local.build_spec
-  platform              = var.build_type == "nextjs" ? "WEB_COMPUTE" : "WEB"
-  iam_service_role_arn  = aws_iam_role.amplify_build.arn
+  name                 = local.name
+  repository           = var.app_mode == "connected" ? var.repository_url : null
+  oauth_token          = var.app_mode == "connected" ? var.github_oauth_token : null
+  build_spec           = local.build_spec
+  platform             = var.build_type == "nextjs" ? "WEB_COMPUTE" : "WEB"
+  iam_service_role_arn = var.use_amplify_service_role ? aws_iam_role.amplify_build[0].arn : null
 
   dynamic "custom_rule" {
     for_each = local.custom_rules

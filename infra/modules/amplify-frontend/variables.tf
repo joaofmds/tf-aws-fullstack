@@ -1,3 +1,9 @@
+variable "use_amplify_service_role" {
+  description = "Attach an IAM service role to the Amplify app for build. Set to false for frontend-only builds if you get 'Unable to assume specified IAM Role'."
+  type        = bool
+  default     = false
+}
+
 variable "project_name" {
   description = "Project name used in resource naming."
   type        = string
