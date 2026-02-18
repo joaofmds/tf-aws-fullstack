@@ -2,17 +2,44 @@ name: frontend-amplify
 
 on:
   push:
-    branches: [main, develop]
+    branches: [dev, main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-amplify.yml'
+
+  pull_request:
+    branches: [dev, main]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-amplify.yml'
 
 jobs:
-  trigger-amplify:
+  trigger-amplify-dev:
+    name: Trigger Amplify (dev)
     runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && github.ref_name == 'dev') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'dev')
+
     steps:
-      - name: Trigger Amplify build via webhook
+      - name: Trigger Amplify build via webhook (dev)
         env:
-          AMPLIFY_WEBHOOK_URL: ${{ github.ref == 'refs/heads/main' && secrets.AMPLIFY_WEBHOOK_PROD || secrets.AMPLIFY_WEBHOOK_DEV }}
+          AMPLIFY_WEBHOOK_URL: ${{ secrets.AMPLIFY_WEBHOOK_DEV }}
         run: |
-          curl -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
+          set -euo pipefail
+          curl -fsS -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
+
+  trigger-amplify-prod:
+    name: Trigger Amplify (prod)
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'push' && github.ref_name == 'main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
+
+    steps:
+      - name: Trigger Amplify build via webhook (prod)
+        env:
+          AMPLIFY_WEBHOOK_URL: ${{ secrets.AMPLIFY_WEBHOOK_PROD }}
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
