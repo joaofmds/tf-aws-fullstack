@@ -38,7 +38,7 @@ variable "backend_image" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.backend_image)) > 0
+    condition     = length(trimspace(var.backend_image)) > 0
     error_message = "backend_image must not be empty."
   }
 }
@@ -49,7 +49,7 @@ variable "cron_image" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.cron_image)) > 0
+    condition     = length(trimspace(var.cron_image)) > 0
     error_message = "cron_image must not be empty."
   }
 }
@@ -148,7 +148,7 @@ variable "timezone" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.timezone)) > 0
+    condition     = length(trimspace(var.timezone)) > 0
     error_message = "timezone must not be empty."
   }
 }
@@ -159,7 +159,7 @@ variable "db_host" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.db_host)) > 0
+    condition     = length(trimspace(var.db_host)) > 0
     error_message = "db_host must not be empty."
   }
 }
@@ -181,7 +181,7 @@ variable "db_name" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.db_name)) > 0
+    condition     = length(trimspace(var.db_name)) > 0
     error_message = "db_name must not be empty."
   }
 }
@@ -214,7 +214,7 @@ variable "uploads_bucket_name" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.uploads_bucket_name)) > 0
+    condition     = length(trimspace(var.uploads_bucket_name)) > 0
     error_message = "uploads_bucket_name must not be empty."
   }
 }
@@ -274,7 +274,7 @@ variable "cron_schedule" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.cron_schedule)) > 0
+    condition     = length(trimspace(var.cron_schedule)) > 0
     error_message = "cron_schedule must not be empty."
   }
 }

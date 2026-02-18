@@ -18,7 +18,7 @@ variable "project" {
   default     = "tf-aws-fullstack"
 
   validation {
-    condition     = length(trim(var.project)) > 0
+    condition     = length(trimspace(var.project)) > 0
     error_message = "project must not be empty."
   }
 }
@@ -29,7 +29,7 @@ variable "environment" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.environment)) > 0
+    condition     = length(trimspace(var.environment)) > 0
     error_message = "environment must not be empty."
   }
 }

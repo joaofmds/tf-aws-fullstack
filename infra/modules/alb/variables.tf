@@ -64,7 +64,7 @@ variable "health_check_path" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.health_check_path)) > 0 && startswith(var.health_check_path, "/")
+    condition     = length(trimspace(var.health_check_path)) > 0 && startswith(var.health_check_path, "/")
     error_message = "health_check_path must be non-empty and start with '/'."
   }
 }

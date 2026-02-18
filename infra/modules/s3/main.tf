@@ -28,6 +28,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "uploads" {
     id     = "expire-old-imports"
     status = "Enabled"
 
+    filter {}
+
     expiration {
       days = var.expiration_days
     }

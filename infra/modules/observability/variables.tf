@@ -27,7 +27,7 @@ variable "alb_arn_suffix" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.alb_arn_suffix)) > 0
+    condition     = length(trimspace(var.alb_arn_suffix)) > 0
     error_message = "alb_arn_suffix must not be empty."
   }
 }
@@ -38,7 +38,7 @@ variable "target_group_arn_suffix" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.target_group_arn_suffix)) > 0
+    condition     = length(trimspace(var.target_group_arn_suffix)) > 0
     error_message = "target_group_arn_suffix must not be empty."
   }
 }
@@ -49,7 +49,7 @@ variable "cluster_name" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.cluster_name)) > 0
+    condition     = length(trimspace(var.cluster_name)) > 0
     error_message = "cluster_name must not be empty."
   }
 }
@@ -60,7 +60,7 @@ variable "service_name" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.service_name)) > 0
+    condition     = length(trimspace(var.service_name)) > 0
     error_message = "service_name must not be empty."
   }
 }

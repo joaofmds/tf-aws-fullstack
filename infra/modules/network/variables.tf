@@ -28,7 +28,7 @@ variable "public_subnets" {
 
   validation {
     condition = length(var.public_subnets) > 0 && alltrue([
-      for subnet in values(var.public_subnets) : can(cidrhost(subnet.cidr, 0)) && length(trim(subnet.az)) > 0
+      for subnet in values(var.public_subnets) : can(cidrhost(subnet.cidr, 0)) && length(trimspace(subnet.az)) > 0
     ])
     error_message = "public_subnets must include at least one subnet, and each subnet must have a valid CIDR and non-empty AZ."
   }
@@ -41,7 +41,7 @@ variable "private_app_subnets" {
 
   validation {
     condition = length(var.private_app_subnets) > 0 && alltrue([
-      for subnet in values(var.private_app_subnets) : can(cidrhost(subnet.cidr, 0)) && length(trim(subnet.az)) > 0
+      for subnet in values(var.private_app_subnets) : can(cidrhost(subnet.cidr, 0)) && length(trimspace(subnet.az)) > 0
     ])
     error_message = "private_app_subnets must include at least one subnet, and each subnet must have a valid CIDR and non-empty AZ."
   }
@@ -54,7 +54,7 @@ variable "private_db_subnets" {
 
   validation {
     condition = length(var.private_db_subnets) > 0 && alltrue([
-      for subnet in values(var.private_db_subnets) : can(cidrhost(subnet.cidr, 0)) && length(trim(subnet.az)) > 0
+      for subnet in values(var.private_db_subnets) : can(cidrhost(subnet.cidr, 0)) && length(trimspace(subnet.az)) > 0
     ])
     error_message = "private_db_subnets must include at least one subnet, and each subnet must have a valid CIDR and non-empty AZ."
   }

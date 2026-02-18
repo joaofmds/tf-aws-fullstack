@@ -120,8 +120,8 @@ variable "maintenance_window" {
   nullable    = false
 
   validation {
-    condition     = can(regex("^[a-z]{3}:[0-2][0-9]:[0-5][0-9]-[a-z]{3}:[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
-    error_message = "maintenance_window must follow the format ddd:hh:mm-ddd:hh:mm."
+    condition     = can(regex("^[a-zA-Z]{3}:[0-2][0-9]:[0-5][0-9]-[a-zA-Z]{3}:[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
+    error_message = "maintenance_window must follow the format ddd:hh:mm-ddd:hh:mm (e.g. sun:03:00-sun:04:00)."
   }
 }
 
@@ -149,7 +149,7 @@ variable "db_timezone" {
   default     = "UTC"
 
   validation {
-    condition     = length(trim(var.db_timezone)) > 0
+    condition     = length(trimspace(var.db_timezone)) > 0
     error_message = "db_timezone must not be empty."
   }
 }

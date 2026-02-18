@@ -16,7 +16,7 @@ variable "database_user" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.database_user)) > 0
+    condition     = length(trimspace(var.database_user)) > 0
     error_message = "database_user must not be empty."
   }
 }
@@ -39,7 +39,7 @@ variable "database_name" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.database_name)) > 0
+    condition     = length(trimspace(var.database_name)) > 0
     error_message = "database_name must not be empty."
   }
 }
@@ -50,7 +50,7 @@ variable "cors_origins" {
   nullable    = false
 
   validation {
-    condition     = length(trim(var.cors_origins)) > 0
+    condition     = length(trimspace(var.cors_origins)) > 0
     error_message = "cors_origins must not be empty."
   }
 }
