@@ -271,3 +271,10 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "github_oauth_token" {
+  description = "GitHub OAuth token for Amplify app (connected mode). Use a fine-grained PAT with repo scope."
+  type        = string
+  default     = null
+  sensitive   = true
+}

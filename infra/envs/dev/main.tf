@@ -146,7 +146,6 @@ module "amplify_frontend" {
   enable_pr_previews    = true
   custom_domain_enabled = false
 
-  # Vue CLI usa VUE_APP_*; base da API deve terminar em /api/ (rotas: /api/import_file, /api/products)
   frontend_env_vars = {
     VUE_APP_API_URL = "https://${module.alb.alb_dns_name}/api/"
     VITE_APP_NAME   = "${var.project}-${var.environment}"
