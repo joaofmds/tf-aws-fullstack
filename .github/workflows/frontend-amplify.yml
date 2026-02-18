@@ -20,14 +20,21 @@ jobs:
     if: >
       (github.event_name == 'push' && github.ref_name == 'dev') ||
       (github.event_name == 'pull_request' && github.base_ref == 'dev')
-
     steps:
       - name: Trigger Amplify build via webhook (dev)
         env:
           AMPLIFY_WEBHOOK_URL: ${{ secrets.AMPLIFY_WEBHOOK_DEV }}
         run: |
           set -euo pipefail
-          curl -fsS -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
+          if [ -z "${AMPLIFY_WEBHOOK_URL:-}" ]; then
+            echo "::error::Secret AMPLIFY_WEBHOOK_DEV is not set."
+            exit 1
+          fi
+
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            --data '{}' \
+            "$AMPLIFY_WEBHOOK_URL"
 
   trigger-amplify-prod:
     name: Trigger Amplify (prod)
@@ -35,11 +42,18 @@ jobs:
     if: >
       (github.event_name == 'push' && github.ref_name == 'main') ||
       (github.event_name == 'pull_request' && github.base_ref == 'main')
-
     steps:
       - name: Trigger Amplify build via webhook (prod)
         env:
           AMPLIFY_WEBHOOK_URL: ${{ secrets.AMPLIFY_WEBHOOK_PROD }}
         run: |
           set -euo pipefail
-          curl -fsS -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
+          if [ -z "${AMPLIFY_WEBHOOK_URL:-}" ]; then
+            echo "::error::Secret AMPLIFY_WEBHOOK_PROD is not set."
+            exit 1
+          fi
+
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            --data '{}' \
+            "$AMPLIFY_WEBHOOK_URL"

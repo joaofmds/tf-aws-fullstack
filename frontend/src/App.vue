@@ -3,6 +3,7 @@
 </template>
 
 <script>
+// App root – ProductIndex handles products UI
 import ProductIndex from './components/ProductIndex.vue'
 
 export default {
