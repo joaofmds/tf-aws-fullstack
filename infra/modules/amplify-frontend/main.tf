@@ -4,57 +4,17 @@ locals {
   api_env_key = var.build_type == "nextjs" ? "NEXT_PUBLIC_API_BASE_URL" : "VITE_API_BASE_URL"
 
   default_env_vars = {
-    ENVIRONMENT          = var.environment
-    APP_ROOT             = var.app_root
-    NODE_VERSION         = var.node_version
-    (local.api_env_key)  = var.backend_base_url
+    ENVIRONMENT         = var.environment
+    APP_ROOT            = var.app_root
+    NODE_VERSION        = var.node_version
+    (local.api_env_key) = var.backend_base_url
   }
 
   branch_env_vars = merge(local.default_env_vars, var.frontend_env_vars)
 
   basic_auth_credentials = var.enable_basic_auth_for_previews ? base64encode("${var.basic_auth_username}:${var.basic_auth_password}") : null
 
-  default_build_spec = var.build_type == "vite" ? <<-EOT
-    version: 1
-    applications:
-      - appRoot: ${var.app_root}
-        frontend:
-          phases:
-            preBuild:
-              commands:
-                - nvm use ${var.node_version} || nvm install ${var.node_version}
-                - npm ci
-            build:
-              commands:
-                - npm run build
-          artifacts:
-            baseDirectory: dist
-            files:
-              - '**/*'
-          cache:
-            paths:
-              - node_modules/**/*
-  EOT : var.build_type == "nextjs" ? <<-EOT
-    version: 1
-    applications:
-      - appRoot: ${var.app_root}
-        frontend:
-          phases:
-            preBuild:
-              commands:
-                - nvm use ${var.node_version} || nvm install ${var.node_version}
-                - npm ci
-            build:
-              commands:
-                - npm run build
-          artifacts:
-            baseDirectory: .next
-            files:
-              - '**/*'
-          cache:
-            paths:
-              - node_modules/**/*
-  EOT : <<-EOT
+  build_spec_vite = <<-EOT
     version: 1
     applications:
       - appRoot: ${var.app_root}
@@ -75,6 +35,52 @@ locals {
             paths:
               - node_modules/**/*
   EOT
+
+  build_spec_nextjs = <<-EOT
+    version: 1
+    applications:
+      - appRoot: ${var.app_root}
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - nvm use ${var.node_version} || nvm install ${var.node_version}
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: .next
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+  EOT
+
+  build_spec_custom = <<-EOT
+    version: 1
+    applications:
+      - appRoot: ${var.app_root}
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - nvm use ${var.node_version} || nvm install ${var.node_version}
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: dist
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+  EOT
+
+  default_build_spec = var.build_type == "vite" ? local.build_spec_vite : (var.build_type == "nextjs" ? local.build_spec_nextjs : local.build_spec_custom)
 
   build_spec = coalesce(var.amplify_build_spec, local.default_build_spec)
 
@@ -118,12 +124,21 @@ locals {
 }
 
 resource "aws_amplify_app" "this" {
-  name           = local.name
-  repository     = var.app_mode == "connected" ? var.repository_url : null
-  oauth_token    = var.app_mode == "connected" ? var.github_oauth_token : null
-  build_spec     = local.build_spec
-  platform       = var.build_type == "nextjs" ? "WEB_COMPUTE" : "WEB"
-  custom_rules   = local.custom_rules
+  name        = local.name
+  repository  = var.app_mode == "connected" ? var.repository_url : null
+  oauth_token = var.app_mode == "connected" ? var.github_oauth_token : null
+  build_spec  = local.build_spec
+  platform    = var.build_type == "nextjs" ? "WEB_COMPUTE" : "WEB"
+
+  dynamic "custom_rule" {
+    for_each = local.custom_rules
+    content {
+      source = custom_rule.value.source
+      target = custom_rule.value.target
+      status = custom_rule.value.status
+    }
+  }
+
   custom_headers = local.custom_headers
 
   environment_variables = local.default_env_vars

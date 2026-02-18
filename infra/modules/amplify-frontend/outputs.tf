@@ -14,8 +14,8 @@ output "branch_name" {
 }
 
 output "branch_url" {
-  description = "Primary branch URL in Amplify."
-  value       = aws_amplify_branch.primary.web_url
+  description = "Primary branch URL in Amplify (https://<branch>.<app-default-domain>)."
+  value       = "https://${aws_amplify_branch.primary.branch_name}.${aws_amplify_app.this.default_domain}"
 }
 
 output "custom_domain_urls" {

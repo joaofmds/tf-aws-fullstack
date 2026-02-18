@@ -134,22 +134,21 @@ module "oidc" {
 module "amplify_frontend" {
   source = "../../modules/amplify-frontend"
 
-  project_name         = var.project
-  environment          = var.environment
-  app_mode             = "connected"
-  repository_url       = "https://github.com/<org>/<repo>"
-  repository_branch    = "main"
-  github_oauth_token   = var.github_oauth_token
-  build_type           = "nextjs"
-  app_root             = "frontend"
-  backend_base_url     = "https://${module.alb.alb_dns_name}"
-  enable_pr_previews   = false
-  custom_domain_enabled = true
-  domain_name          = "example.com"
-  prod_subdomain       = "www"
+  project_name          = var.project
+  environment           = var.environment
+  app_mode              = "connected"
+  repository_url        = "https://github.com/${var.github_org}/${var.github_repo}"
+  repository_branch     = "main"
+  github_oauth_token    = var.github_oauth_token
+  build_type            = "vite"
+  app_root              = "frontend"
+  backend_base_url      = "https://${module.alb.alb_dns_name}"
+  enable_pr_previews    = true
+  custom_domain_enabled = false
 
   frontend_env_vars = {
-    NEXT_PUBLIC_APP_ENV = var.environment
+    VUE_APP_API_URL = "https://${module.alb.alb_dns_name}/api/"
+    VITE_APP_NAME   = "${var.project}-${var.environment}"
   }
 
   tags = local.common_tags
