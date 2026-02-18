@@ -2,11 +2,13 @@ name: terraform
 
 on:
   pull_request:
+    branches: [dev, main]
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
+
   push:
-    branches: [main]
+    branches: [dev, main]
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
@@ -16,24 +18,106 @@ permissions:
   contents: read
 
 jobs:
-  plan-apply:
+  terraform-dev:
+    name: Terraform (dev)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        env: [dev, prod]
     defaults:
       run:
-        working-directory: infra/envs/${{ matrix.env }}
+        working-directory: infra/envs/dev
+
+    # Roda quando:
+    # - push na branch dev
+    # - pull_request com base (destino) dev
+    if: >
+      (github.event_name == 'push' && github.ref_name == 'dev') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'dev')
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: hashicorp/setup-terraform@v3
-      - uses: aws-actions/configure-aws-credentials@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets[format('AWS_TERRAFORM_ROLE_ARN_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN_DEV }}
           aws-region: us-east-1
-      - run: terraform init
-      - run: terraform fmt -check -recursive ../..
-      - run: terraform validate
-      - run: terraform plan -var-file=terraform.tfvars -out=tfplan
-      - if: github.ref == 'refs/heads/main'
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Create terraform.tfvars
+        env:
+          TFVARS: ${{ secrets.TFVARS_DEV }}
+        run: |
+          if [ -z "$TFVARS" ]; then
+            echo "::error::Secret TFVARS_DEV is not set. Add the contents of infra/envs/dev/terraform.tfvars as repository secret TFVARS_DEV."
+            exit 1
+          fi
+          printf '%s' "$TFVARS" > terraform.tfvars
+
+      - name: Terraform fmt (repo)
+        run: terraform fmt -check -recursive ../..
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -var-file=terraform.tfvars -out=tfplan
+
+      # Apply somente em push (não em PR)
+      - name: Terraform apply (dev)
+        if: github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
+
+  terraform-prod:
+    name: Terraform (prod)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/envs/prod
+
+    # Roda quando:
+    # - push na branch main
+    # - pull_request com base (destino) main
+    if: >
+      (github.event_name == 'push' && github.ref_name == 'main') ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN_PROD }}
+          aws-region: us-east-1
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Create terraform.tfvars
+        env:
+          TFVARS: ${{ secrets.TFVARS_PROD }}
+        run: |
+          if [ -z "$TFVARS" ]; then
+            echo "::error::Secret TFVARS_PROD is not set. Add the contents of infra/envs/prod/terraform.tfvars as repository secret TFVARS_PROD."
+            exit 1
+          fi
+          printf '%s' "$TFVARS" > terraform.tfvars
+
+      - name: Terraform fmt (repo)
+        run: terraform fmt -check -recursive ../..
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -var-file=terraform.tfvars -out=tfplan
+
+      # Apply somente em push (não em PR)
+      - name: Terraform apply (prod)
+        if: github.event_name == 'push'
         run: terraform apply -auto-approve tfplan

@@ -3,15 +3,15 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  state_key               = coalesce(var.state_key, "envs/${var.environment}/terraform.tfstate")
-  account_id              = data.aws_caller_identity.current.account_id
-  region                  = data.aws_region.current.name
-  base_name               = lower("${var.org}-${var.project}-${local.account_id}-${local.region}")
-  tfstate_bucket_name     = substr("${local.base_name}-tfstate", 0, 63)
-  lock_table_name         = "${local.base_name}-tfstate-locks"
-  access_log_bucket_name  = substr("${local.base_name}-tfstate-logs", 0, 63)
-  object_arn_pattern      = "${aws_s3_bucket.tfstate.arn}/*"
-  effective_kms_key_arn   = var.enable_kms ? aws_kms_key.tfstate[0].arn : null
+  state_key              = coalesce(var.state_key, "envs/${var.environment}/terraform.tfstate")
+  account_id             = data.aws_caller_identity.current.account_id
+  region                 = data.aws_region.current.name
+  base_name              = lower("${var.org}-${var.project}-${local.account_id}-${local.region}")
+  tfstate_bucket_name    = substr("${local.base_name}-tfstate", 0, 63)
+  lock_table_name        = "${local.base_name}-tfstate-locks"
+  access_log_bucket_name = substr("${local.base_name}-tfstate-logs", 0, 63)
+  object_arn_pattern     = "${aws_s3_bucket.tfstate.arn}/*"
+  effective_kms_key_arn  = var.enable_kms ? aws_kms_key.tfstate[0].arn : null
   common_tags = merge(var.tags, {
     ManagedBy   = "terraform"
     Environment = var.environment
