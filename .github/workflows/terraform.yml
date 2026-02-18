@@ -56,6 +56,9 @@ jobs:
           fi
           printf '%s' "$TFVARS" > terraform.tfvars
 
+      - name: Format Terraform (incl. tfvars gerado)
+        run: terraform fmt -recursive ../..
+
       - name: Terraform fmt (repo)
         run: terraform fmt -check -recursive ../..
 
@@ -107,6 +110,9 @@ jobs:
             exit 1
           fi
           printf '%s' "$TFVARS" > terraform.tfvars
+
+      - name: Format Terraform (incl. tfvars gerado)
+        run: terraform fmt -recursive ../..
 
       - name: Terraform fmt (repo)
         run: terraform fmt -check -recursive ../..
