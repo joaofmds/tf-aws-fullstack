@@ -134,19 +134,19 @@ module "oidc" {
 module "amplify_frontend" {
   source = "../../modules/amplify-frontend"
 
-  project_name         = var.project
-  environment          = var.environment
-  app_mode             = "connected"
-  repository_url       = "https://github.com/<org>/<repo>"
-  repository_branch    = "main"
-  github_oauth_token   = var.github_oauth_token
-  build_type           = "nextjs"
-  app_root             = "frontend"
-  backend_base_url     = "https://${module.alb.alb_dns_name}"
-  enable_pr_previews   = false
+  project_name          = var.project
+  environment           = var.environment
+  app_mode              = "connected"
+  repository_url        = "https://github.com/<org>/<repo>"
+  repository_branch     = "main"
+  github_oauth_token    = var.github_oauth_token
+  build_type            = "nextjs"
+  app_root              = "frontend"
+  backend_base_url      = "https://${module.alb.alb_dns_name}"
+  enable_pr_previews    = false
   custom_domain_enabled = true
-  domain_name          = "example.com"
-  prod_subdomain       = "www"
+  domain_name           = "example.com"
+  prod_subdomain        = "www"
 
   frontend_env_vars = {
     NEXT_PUBLIC_APP_ENV = var.environment
