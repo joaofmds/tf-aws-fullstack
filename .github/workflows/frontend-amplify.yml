@@ -27,6 +27,10 @@ jobs:
           AMPLIFY_WEBHOOK_URL: ${{ secrets.AMPLIFY_WEBHOOK_DEV }}
         run: |
           set -euo pipefail
+          if [ -z "${AMPLIFY_WEBHOOK_URL:-}" ]; then
+            echo "::error::Secret AMPLIFY_WEBHOOK_DEV is not set. Add the Amplify webhook URL (output 'webhook_url' do Terraform) as repository secret AMPLIFY_WEBHOOK_DEV."
+            exit 1
+          fi
           curl -fsS -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
 
   trigger-amplify-prod:
@@ -42,4 +46,8 @@ jobs:
           AMPLIFY_WEBHOOK_URL: ${{ secrets.AMPLIFY_WEBHOOK_PROD }}
         run: |
           set -euo pipefail
+          if [ -z "${AMPLIFY_WEBHOOK_URL:-}" ]; then
+            echo "::error::Secret AMPLIFY_WEBHOOK_PROD is not set. Add the Amplify webhook URL (output 'webhook_url' do Terraform) as repository secret AMPLIFY_WEBHOOK_PROD."
+            exit 1
+          fi
           curl -fsS -X POST -d '{}' "$AMPLIFY_WEBHOOK_URL"
