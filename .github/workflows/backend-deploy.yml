@@ -15,43 +15,88 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         env: [dev, prod]
+
     steps:
       - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets[format('AWS_DEPLOY_ROLE_ARN_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
           aws-region: us-east-1
-      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Build and push backend
         env:
           ECR_BACKEND: ${{ secrets[format('ECR_BACKEND_REPO_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
         run: |
-          docker build -t $ECR_BACKEND:${GITHUB_SHA} backend
-          docker push $ECR_BACKEND:${GITHUB_SHA}
+          set -euo pipefail
+          docker build -t "$ECR_BACKEND:${GITHUB_SHA}" backend
+          docker push "$ECR_BACKEND:${GITHUB_SHA}"
+
       - name: Build and push cron
         env:
           ECR_CRON: ${{ secrets[format('ECR_CRON_REPO_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
         run: |
-          docker build -f backend/cron.Dockerfile -t $ECR_CRON:${GITHUB_SHA} backend
-          docker push $ECR_CRON:${GITHUB_SHA}
+          set -euo pipefail
+          docker build -f backend/cron.Dockerfile -t "$ECR_CRON:${GITHUB_SHA}" backend
+          docker push "$ECR_CRON:${GITHUB_SHA}"
+
       - name: Run DB migrations (one-off ECS task)
         env:
+          ENV: ${{ matrix.env }}
           CLUSTER: ${{ secrets[format('ECS_CLUSTER_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
-          SUBNETS: ${{ secrets[format('ECS_PRIVATE_SUBNETS_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
-          SG: ${{ secrets[format('ECS_SECURITY_GROUP_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
           TASKDEF: ${{ secrets[format('ECS_BACKEND_TASKDEF_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
         run: |
+          set -euo pipefail
+
+          VPC_ID=$(aws ec2 describe-vpcs \
+            --filters "Name=tag:Project,Values=tf-aws-fullstack" "Name=tag:Environment,Values=$ENV" \
+            --query "Vpcs[0].VpcId" --output text)
+
+          if [ "$VPC_ID" = "None" ] || [ -z "$VPC_ID" ]; then
+            echo "VPC não encontrada para env=$ENV (tags Project/Environment). Ajuste os filtros para bater com o Terraform."
+            exit 1
+          fi
+
+          SUBNETS_JSON=$(aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Tier,Values=private" \
+            --query "Subnets[].SubnetId" --output json)
+
+          if [ "$SUBNETS_JSON" = "[]" ] || [ -z "$SUBNETS_JSON" ]; then
+            echo "Nenhuma subnet privada encontrada (tag Tier=private) na VPC $VPC_ID. Ajuste tags/filtros."
+            exit 1
+          fi
+
+          SG_ID=$(aws ec2 describe-security-groups \
+            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=tf-aws-fullstack-$ENV-ecs" \
+            --query "SecurityGroups[0].GroupId" --output text)
+
+          if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
+            echo "Security Group do ECS não encontrado (tag Name=tf-aws-fullstack-$ENV-ecs) na VPC $VPC_ID. Ajuste tags/filtros."
+            exit 1
+          fi
+
+          echo "Using VPC=$VPC_ID"
+          echo "Using subnets=$SUBNETS_JSON"
+          echo "Using sg=$SG_ID"
+
           aws ecs run-task \
             --cluster "$CLUSTER" \
             --task-definition "$TASKDEF" \
             --launch-type FARGATE \
-            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --network-configuration "awsvpcConfiguration={subnets=$SUBNETS_JSON,securityGroups=[\"$SG_ID\"],assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"backend","command":["alembic","upgrade","head"]}]}'
+
       - name: Deploy ECS backend
         env:
           CLUSTER: ${{ secrets[format('ECS_CLUSTER_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
           SERVICE: ${{ secrets[format('ECS_SERVICE_{0}', matrix.env == 'dev' && 'DEV' || 'PROD')] }}
         run: |
+          set -euo pipefail
           aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment

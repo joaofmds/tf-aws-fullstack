@@ -13,8 +13,9 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 }
 
 resource "aws_ssm_parameter" "cors_origins" {
-  name  = "/${var.name_prefix}/cors_origins"
-  type  = "String"
-  value = var.cors_origins
-  tags  = var.tags
+  name      = "/${var.name_prefix}/cors_origins"
+  type      = "String"
+  value     = var.cors_origins
+  overwrite = true
+  tags      = var.tags
 }
