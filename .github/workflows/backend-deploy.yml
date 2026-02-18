@@ -84,11 +84,11 @@ jobs:
           fi
 
           SG_ID=$(aws ec2 describe-security-groups \
-            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=tf-aws-fullstack-$ENV-ecs" \
+            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=tf-aws-fullstack-$ENV-ecs-sg" \
             --query "SecurityGroups[0].GroupId" --output text)
 
           if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
-            echo "Security Group do ECS não encontrado (tag Name=tf-aws-fullstack-$ENV-ecs) na VPC $VPC_ID. Ajuste tags/filtros."
+            echo "Security Group do ECS não encontrado (tag Name=tf-aws-fullstack-$ENV-ecs-sg) na VPC $VPC_ID. Ajuste tags/filtros."
             exit 1
           fi
 
@@ -173,11 +173,11 @@ jobs:
           fi
 
           SG_ID=$(aws ec2 describe-security-groups \
-            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=tf-aws-fullstack-$ENV-ecs" \
+            --filters "Name=vpc-id,Values=$VPC_ID" "Name=tag:Name,Values=tf-aws-fullstack-$ENV-ecs-sg" \
             --query "SecurityGroups[0].GroupId" --output text)
 
           if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
-            echo "Security Group do ECS não encontrado (tag Name=tf-aws-fullstack-$ENV-ecs) na VPC $VPC_ID. Ajuste tags/filtros."
+            echo "Security Group do ECS não encontrado (tag Name=tf-aws-fullstack-$ENV-ecs-sg) na VPC $VPC_ID. Ajuste tags/filtros."
             exit 1
           fi
 
