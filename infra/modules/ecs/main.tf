@@ -37,7 +37,7 @@ resource "aws_iam_role_policy" "execution_secrets" {
     Statement = [
       {
         Effect   = "Allow",
-        Action   = ["secretsmanager:GetSecretValue", "ssm:GetParameter"],
+        Action   = ["secretsmanager:GetSecretValue", "ssm:GetParameter", "ssm:GetParameters"],
         Resource = [var.db_secret_arn, var.cors_param_arn]
       }
     ]
