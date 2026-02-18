@@ -48,6 +48,8 @@ jobs:
           set -euo pipefail
           docker build -t "$ECR_BACKEND:${GITHUB_SHA}" backend
           docker push "$ECR_BACKEND:${GITHUB_SHA}"
+          docker tag "$ECR_BACKEND:${GITHUB_SHA}" "$ECR_BACKEND:latest"
+          docker push "$ECR_BACKEND:latest"
 
       - name: Build and push cron
         env:
@@ -56,6 +58,8 @@ jobs:
           set -euo pipefail
           docker build -f backend/cron.Dockerfile -t "$ECR_CRON:${GITHUB_SHA}" backend
           docker push "$ECR_CRON:${GITHUB_SHA}"
+          docker tag "$ECR_CRON:${GITHUB_SHA}" "$ECR_CRON:latest"
+          docker push "$ECR_CRON:latest"
 
       - name: Run DB migrations (one-off ECS task)
         env:
@@ -137,6 +141,8 @@ jobs:
           set -euo pipefail
           docker build -t "$ECR_BACKEND:${GITHUB_SHA}" backend
           docker push "$ECR_BACKEND:${GITHUB_SHA}"
+          docker tag "$ECR_BACKEND:${GITHUB_SHA}" "$ECR_BACKEND:latest"
+          docker push "$ECR_BACKEND:latest"
 
       - name: Build and push cron
         env:
@@ -145,6 +151,8 @@ jobs:
           set -euo pipefail
           docker build -f backend/cron.Dockerfile -t "$ECR_CRON:${GITHUB_SHA}" backend
           docker push "$ECR_CRON:${GITHUB_SHA}"
+          docker tag "$ECR_CRON:${GITHUB_SHA}" "$ECR_CRON:latest"
+          docker push "$ECR_CRON:latest"
 
       - name: Run DB migrations (one-off ECS task)
         env:
