@@ -131,30 +131,26 @@ module "oidc" {
   github_repo = var.github_repo
 }
 
-# -----------------------------------------------------------------------------
-# Exemplo: Frontend no AWS Amplify integrado com backend ECS/ALB
-# Ajuste as variáveis conforme seu repositório e domínio.
-# -----------------------------------------------------------------------------
-# module "amplify_frontend" {
-#   source = "../../modules/amplify-frontend"
-#
-#   project_name         = var.project
-#   environment          = var.environment
-#   app_mode             = "connected" # connected (GitHub App/OAuth) ou webhook
-#   repository_url       = "https://github.com/<org>/<repo>"
-#   repository_branch    = "develop"
-#   github_oauth_token   = var.github_oauth_token
-#   build_type           = "vite"
-#   app_root             = "frontend"
-#   backend_base_url     = "https://${module.alb.alb_dns_name}"
-#   enable_pr_previews   = true
-#   custom_domain_enabled = true
-#   domain_name          = "example.com"
-#   dev_subdomain        = "dev"
-#
-#   frontend_env_vars = {
-#     VITE_APP_NAME = "${var.project}-${var.environment}"
-#   }
-#
-#   tags = local.common_tags
-# }
+module "amplify_frontend" {
+  source = "../../modules/amplify-frontend"
+
+  project_name          = var.project
+  environment           = var.environment
+  app_mode              = "connected"
+  repository_url        = "https://github.com/${var.github_org}/${var.github_repo}"
+  repository_branch     = "dev"
+  github_oauth_token    = var.github_oauth_token
+  build_type            = "vite"
+  app_root              = "frontend"
+  backend_base_url      = "https://${module.alb.alb_dns_name}"
+  enable_pr_previews    = true
+  custom_domain_enabled = false
+
+  # Vue CLI usa VUE_APP_*; base da API deve terminar em /api/ (rotas: /api/import_file, /api/products)
+  frontend_env_vars = {
+    VUE_APP_API_URL = "https://${module.alb.alb_dns_name}/api/"
+    VITE_APP_NAME   = "${var.project}-${var.environment}"
+  }
+
+  tags = local.common_tags
+}

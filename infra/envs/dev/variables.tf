@@ -265,6 +265,13 @@ variable "github_repo" {
   nullable    = false
 }
 
+variable "github_oauth_token" {
+  description = "GitHub OAuth token for Amplify app (connected mode). Use a fine-grained PAT with repo scope."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 # Tags
 variable "tags" {
   description = "Map of common tags applied to all environment resources."
