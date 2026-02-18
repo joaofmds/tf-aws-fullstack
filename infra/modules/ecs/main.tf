@@ -200,13 +200,13 @@ resource "aws_ecs_task_definition" "cron" {
 }
 
 resource "aws_iam_role" "eventbridge_invoke" {
-  name               = "${var.name_prefix}-eventbridge-ecs"
+  name = "${var.name_prefix}-eventbridge-ecs"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect    = "Allow",
       Principal = { Service = "events.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -220,9 +220,9 @@ resource "aws_iam_role_policy" "eventbridge_invoke" {
       Effect   = "Allow",
       Action   = "ecs:RunTask",
       Resource = aws_ecs_task_definition.cron.arn
-    }, {
-      Effect = "Allow",
-      Action = "iam:PassRole",
+      }, {
+      Effect   = "Allow",
+      Action   = "iam:PassRole",
       Resource = [aws_iam_role.execution_role.arn, aws_iam_role.task_role.arn]
     }]
   })

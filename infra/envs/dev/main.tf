@@ -84,33 +84,33 @@ module "rds" {
 }
 
 module "ecs" {
-  source             = "../../modules/ecs"
-  name_prefix        = local.name_prefix
-  region             = var.aws_region
-  container_port     = var.container_port
-  backend_image      = "${module.ecr.backend_repository_url}:${var.backend_image_tag}"
-  cron_image         = "${module.ecr.cron_repository_url}:${var.cron_image_tag}"
-  backend_cpu        = var.backend_cpu
-  backend_memory     = var.backend_memory
-  cron_cpu           = var.cron_cpu
-  cron_memory        = var.cron_memory
-  desired_count      = var.desired_count
-  min_capacity       = var.min_capacity
-  max_capacity       = var.max_capacity
-  app_workers        = var.app_workers
-  timezone           = var.timezone
-  db_host            = module.rds.db_endpoint
-  db_port            = module.rds.db_port
-  db_name            = module.rds.db_name
-  db_secret_arn      = module.secrets.db_secret_arn
-  cors_param_arn     = module.secrets.cors_origins_param_arn
+  source              = "../../modules/ecs"
+  name_prefix         = local.name_prefix
+  region              = var.aws_region
+  container_port      = var.container_port
+  backend_image       = "${module.ecr.backend_repository_url}:${var.backend_image_tag}"
+  cron_image          = "${module.ecr.cron_repository_url}:${var.cron_image_tag}"
+  backend_cpu         = var.backend_cpu
+  backend_memory      = var.backend_memory
+  cron_cpu            = var.cron_cpu
+  cron_memory         = var.cron_memory
+  desired_count       = var.desired_count
+  min_capacity        = var.min_capacity
+  max_capacity        = var.max_capacity
+  app_workers         = var.app_workers
+  timezone            = var.timezone
+  db_host             = module.rds.db_endpoint
+  db_port             = module.rds.db_port
+  db_name             = module.rds.db_name
+  db_secret_arn       = module.secrets.db_secret_arn
+  cors_param_arn      = module.secrets.cors_origins_param_arn
   uploads_bucket_name = module.s3.uploads_bucket_name
-  uploads_bucket_arn = module.s3.uploads_bucket_arn
-  private_subnet_ids = module.network.private_app_subnet_ids
-  ecs_sg_id          = module.security.ecs_sg_id
-  target_group_arn   = module.alb.target_group_arn
-  log_retention_days = var.log_retention_days
-  cron_schedule      = var.cron_schedule
+  uploads_bucket_arn  = module.s3.uploads_bucket_arn
+  private_subnet_ids  = module.network.private_app_subnet_ids
+  ecs_sg_id           = module.security.ecs_sg_id
+  target_group_arn    = module.alb.target_group_arn
+  log_retention_days  = var.log_retention_days
+  cron_schedule       = var.cron_schedule
 }
 
 
