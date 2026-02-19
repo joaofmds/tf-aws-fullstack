@@ -113,6 +113,7 @@ module "ecs" {
   db_name             = module.rds.db_name
   db_secret_arn       = module.secrets.db_secret_arn
   cors_param_arn      = module.secrets.cors_origins_param_arn
+  cors_origins_hash   = sha256(var.cors_origins)
   uploads_bucket_name = module.s3.uploads_bucket_name
   uploads_bucket_arn  = module.s3.uploads_bucket_arn
   private_subnet_ids  = module.network.private_app_subnet_ids
