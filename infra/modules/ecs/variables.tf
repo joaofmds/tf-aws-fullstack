@@ -208,6 +208,12 @@ variable "cors_param_arn" {
   }
 }
 
+variable "cors_origins_hash" {
+  description = "Hash of cors_origins value. Change this when CORS origins change to trigger ECS task definition update and rollout."
+  type        = string
+  nullable    = false
+}
+
 variable "uploads_bucket_name" {
   description = "Name of the S3 bucket used for uploads."
   type        = string

@@ -4,6 +4,7 @@ from typing import List
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=None, extra="ignore")
 
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
     upload_s3_bucket: str | None = Field(default=None, alias="UPLOAD_S3_BUCKET")
     upload_max_mb: int = Field(default=10, alias="UPLOAD_MAX_MB")
 
-    cors_origins: str = Field(default="http://localhost:8080,http://localhost", alias="CORS_ORIGINS")
+    cors_origins: str = Field(default="https://www.joaofmsouza.com.br,https://joaofmsouza.com.br,http://localhost:8080,http://localhost", alias="CORS_ORIGINS")
     app_workers: int = Field(default=2, alias="APP_WORKERS")
 
     @property

@@ -16,6 +16,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
 # curl required for ECS container health check
 RUN apt-get update \
@@ -27,6 +28,8 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY ./src /app/src
 COPY ./start.sh /app/start.sh
+COPY ./alembic.ini /app/alembic.ini
+COPY ./migrations /app/migrations
 
 RUN chmod +x /app/start.sh
 

@@ -97,7 +97,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "DATABASE_DBNAME", value = var.db_name },
         { name = "UPLOAD_S3_BUCKET", value = var.uploads_bucket_name },
         { name = "TZ", value = var.timezone },
-        { name = "APP_WORKERS", value = tostring(var.app_workers) }
+        { name = "APP_WORKERS", value = tostring(var.app_workers) },
+        { name = "CORS_ORIGINS_HASH", value = var.cors_origins_hash }
       ]
       secrets = [
         { name = "DATABASE_USER", valueFrom = "${var.db_secret_arn}:username::" },
