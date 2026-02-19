@@ -238,9 +238,9 @@ variable "cors_origins" {
   nullable    = false
 }
 
-# TLS
+# TLS / DNS
 variable "acm_certificate_arn" {
-  description = "Optional ACM certificate ARN used to enable HTTPS on the ALB."
+  description = "Optional ACM certificate ARN used to enable HTTPS on the ALB. If domain_name is set, this will be overridden by the DNS/ACM module."
   type        = string
   default     = null
 
@@ -250,6 +250,13 @@ variable "acm_certificate_arn" {
     )
     error_message = "acm_certificate_arn must be null or a valid ACM certificate ARN."
   }
+}
+
+variable "domain_name" {
+  description = "Optional root domain name (e.g., example.com). If set, enables DNS/ACM module for automatic certificate creation and domain association."
+  type        = string
+  default     = null
+  nullable    = true
 }
 
 # Security

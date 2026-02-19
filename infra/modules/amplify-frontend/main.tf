@@ -265,16 +265,40 @@ resource "aws_amplify_branch" "primary" {
   })
 }
 
+# Domain association resource
 resource "aws_amplify_domain_association" "this" {
   count       = var.custom_domain_enabled ? 1 : 0
   app_id      = aws_amplify_app.this.id
   domain_name = var.domain_name
 
   dynamic "sub_domain" {
-    for_each = var.environment == "prod" ? ["", var.prod_subdomain] : [var.dev_subdomain]
+    for_each = var.custom_sub_domains != null ? var.custom_sub_domains : (
+      var.environment == "prod" ? concat(
+        [{
+          branch_name = aws_amplify_branch.primary.branch_name
+          prefix      = ""
+        }],
+        trimspace(var.prod_subdomain) != "" ? [{
+          branch_name = aws_amplify_branch.primary.branch_name
+          prefix      = var.prod_subdomain
+        }] : []
+      ) : [{
+        branch_name = aws_amplify_branch.primary.branch_name
+        prefix      = var.dev_subdomain
+      }]
+    )
     content {
-      branch_name = aws_amplify_branch.primary.branch_name
-      prefix      = sub_domain.value
+      branch_name = sub_domain.value.branch_name
+      prefix      = sub_domain.value.prefix
+    }
+  }
+
+  wait_for_verification = var.domain_wait_for_verification
+
+  lifecycle {
+    precondition {
+      condition     = !var.custom_domain_enabled || (var.domain_name != null && length(trimspace(var.domain_name)) > 0)
+      error_message = "domain_name is required when custom_domain_enabled=true."
     }
   }
 }

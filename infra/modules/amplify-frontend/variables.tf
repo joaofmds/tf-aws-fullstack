@@ -169,6 +169,21 @@ variable "dev_subdomain" {
   default     = "dev"
 }
 
+variable "custom_sub_domains" {
+  description = "Custom list of sub-domains to configure. If provided, overrides dev_subdomain/prod_subdomain logic. Each sub-domain maps a branch to a prefix (empty string for root domain)."
+  type = list(object({
+    branch_name = string
+    prefix      = string
+  }))
+  default = null
+}
+
+variable "domain_wait_for_verification" {
+  description = "Whether to wait for domain verification to complete before marking the resource as created."
+  type        = bool
+  default     = true
+}
+
 variable "enable_webhook" {
   description = "Force creation of Amplify webhook in addition to selected app_mode behavior."
   type        = bool

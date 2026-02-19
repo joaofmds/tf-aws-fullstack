@@ -83,6 +83,12 @@ variable "acm_certificate_arn" {
   }
 }
 
+variable "enable_https" {
+  description = "Whether to enable HTTPS listener on the ALB. Set to true if acm_certificate_arn will be provided (even if known only after apply)."
+  type        = bool
+  default     = false
+}
+
 # Tags
 variable "tags" {
   description = "Map of tags to apply to ALB resources."
