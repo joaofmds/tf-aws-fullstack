@@ -124,26 +124,18 @@ locals {
 }
 
 # IAM role for Amplify build (optional; only when use_amplify_service_role = true)
-data "aws_region" "current" {}
-data "aws_caller_identity" "current" {}
-
 resource "aws_iam_role" "amplify_build" {
   count = var.use_amplify_service_role ? 1 : 0
 
   name = "${local.name}-build"
 
-  # Amplify Hosting uses Amplify service and may use CodeBuild for Standard build; allow both + regional endpoint
-  # No Condition - Amplify build may not send SourceArn/SourceAccount when assuming
+  # Simple trust policy - same as working module
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Service = [
-          "amplify.amazonaws.com",
-          "amplify.${data.aws_region.current.name}.amazonaws.com",
-          "codebuild.amazonaws.com"
-        ]
+        Service = "amplify.amazonaws.com"
       }
       Action = "sts:AssumeRole"
     }]
@@ -157,7 +149,7 @@ resource "aws_iam_role" "amplify_build" {
   })
 }
 
-# Permissions for Amplify build (logs, S3 for cache/artifacts)
+# Permissions for Amplify build - similar to working module (broader permissions)
 resource "aws_iam_role_policy" "amplify_build" {
   count = var.use_amplify_service_role ? 1 : 0
 
@@ -167,14 +159,20 @@ resource "aws_iam_role_policy" "amplify_build" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:CreateLogGroup"]
-        Resource = "*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
-        Resource = ["arn:aws:s3:::amplify-*", "arn:aws:s3:::amplify-*/*"]
+        Effect = "Allow"
+        Action = [
+          "amplify:*",
+          "s3:*",
+          "cloudfront:*",
+          "codebuild:*",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          "arn:aws:logs:*:*:log-group:/amplify/${local.name}:*",
+          "arn:aws:logs:*:*:log-group:/amplify/${local.name}"
+        ]
       }
     ]
   })
