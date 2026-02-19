@@ -1,7 +1,7 @@
 variable "use_amplify_service_role" {
   description = "Attach an IAM service role to the Amplify app for build. Uses a role with trust for Amplify and CodeBuild."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "project_name" {
