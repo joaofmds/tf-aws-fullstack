@@ -125,6 +125,7 @@ locals {
 
 # IAM role for Amplify build (optional; only when use_amplify_service_role = true)
 data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "amplify_build" {
   count = var.use_amplify_service_role ? 1 : 0
@@ -132,21 +133,20 @@ resource "aws_iam_role" "amplify_build" {
   name = "${local.name}-build"
 
   # Amplify Hosting uses Amplify service and may use CodeBuild for Standard build; allow both + regional endpoint
+  # No Condition - Amplify build may not send SourceArn/SourceAccount when assuming
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = [
-            "amplify.amazonaws.com",
-            "amplify.${data.aws_region.current.name}.amazonaws.com",
-            "codebuild.amazonaws.com"
-          ]
-        }
-        Action = "sts:AssumeRole"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = [
+          "amplify.amazonaws.com",
+          "amplify.${data.aws_region.current.name}.amazonaws.com",
+          "codebuild.amazonaws.com"
+        ]
       }
-    ]
+      Action = "sts:AssumeRole"
+    }]
   })
 
   tags = merge(var.tags, {
