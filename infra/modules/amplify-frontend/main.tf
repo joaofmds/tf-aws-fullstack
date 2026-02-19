@@ -129,7 +129,7 @@ resource "aws_iam_role" "amplify_build" {
 
   name = "${local.name}-build"
 
-  # Simple trust policy - same as working module
+  # Trust policy includes regional endpoint (required for some regions) and CodeBuild (Amplify uses CodeBuild)
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -137,7 +137,8 @@ resource "aws_iam_role" "amplify_build" {
       Principal = {
         Service = [
           "amplify.amazonaws.com",
-          "amplify.us-east-1.amazonaws.com"
+          "amplify.us-east-1.amazonaws.com",
+          "codebuild.amazonaws.com"
         ]
       }
       Action = "sts:AssumeRole"
