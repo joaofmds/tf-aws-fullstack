@@ -135,7 +135,10 @@ resource "aws_iam_role" "amplify_build" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Service = "amplify.amazonaws.com"
+        Service = [
+          "amplify.amazonaws.com",
+          "amplify.us-east-1.amazonaws.com"
+        ]
       }
       Action = "sts:AssumeRole"
     }]
