@@ -3,6 +3,7 @@
 </template>
 
 <script>
+// This is a test comment
 import ProductIndex from "./components/ProductIndex.vue";
 
 export default {
