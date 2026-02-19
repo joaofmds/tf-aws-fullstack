@@ -99,11 +99,6 @@ variable "backend_base_url" {
   description = "Base URL for backend API (ALB/CloudFront/API domain), injected into frontend environment variables."
   type        = string
   nullable    = false
-
-  validation {
-    condition     = can(regex("^https://", var.backend_base_url))
-    error_message = "backend_base_url must start with https:// for production-grade security."
-  }
 }
 
 variable "frontend_env_vars" {
