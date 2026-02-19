@@ -142,12 +142,12 @@ module "amplify_frontend" {
   github_oauth_token    = var.github_oauth_token
   build_type            = "vite"
   app_root              = "frontend"
-  backend_base_url      = "https://${module.alb.alb_dns_name}"
+  backend_base_url      = "http://${module.alb.alb_dns_name}"
   enable_pr_previews    = true
   custom_domain_enabled = false
 
   frontend_env_vars = {
-    VUE_APP_API_URL = "https://${module.alb.alb_dns_name}/api/"
+    VUE_APP_API_URL = "http://${module.alb.alb_dns_name}/api/"
     VITE_APP_NAME   = "${var.project}-${var.environment}"
   }
 
