@@ -3,14 +3,15 @@
 </template>
 
 <script>
-import ProductIndex from './components/ProductIndex.vue'
+// This is a test comment
+import ProductIndex from "./components/ProductIndex.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    ProductIndex
-  }
-}
+    ProductIndex,
+  },
+};
 </script>
 
 <style>

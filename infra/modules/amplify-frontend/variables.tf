@@ -1,3 +1,9 @@
+variable "use_amplify_service_role" {
+  description = "Attach an IAM service role to the Amplify app for build. Set to false for frontend-only builds if you get 'Unable to assume specified IAM Role'. When true, uses a role with trust for Amplify and CodeBuild."
+  type        = bool
+  default     = false
+}
+
 variable "project_name" {
   description = "Project name used in resource naming."
   type        = string
@@ -44,7 +50,17 @@ variable "repository_branch" {
 }
 
 variable "github_oauth_token" {
-  description = "GitHub OAuth token used by Amplify when app_mode=connected. Prefer short-lived/least-privilege tokens."
+  description = <<-EOT
+    GitHub OAuth token (Personal Access Token) used by Amplify when app_mode=connected.
+    
+    Required permissions:
+    - Read access to code and metadata
+    - Write access to repository hooks (required for webhooks)
+    - Read and write access to pull requests (for PR previews)
+    - Write access to files at amplify.yml (if using custom build spec)
+    
+    Note: Fine-grained tokens may need explicit checks permission, but classic PATs work fine.
+    EOT
   type        = string
   default     = null
   sensitive   = true
@@ -83,11 +99,6 @@ variable "backend_base_url" {
   description = "Base URL for backend API (ALB/CloudFront/API domain), injected into frontend environment variables."
   type        = string
   nullable    = false
-
-  validation {
-    condition     = can(regex("^https://", var.backend_base_url))
-    error_message = "backend_base_url must start with https:// for production-grade security."
-  }
 }
 
 variable "frontend_env_vars" {
@@ -156,6 +167,21 @@ variable "dev_subdomain" {
   description = "Development subdomain prefix, for example dev (dev.example.com)."
   type        = string
   default     = "dev"
+}
+
+variable "custom_sub_domains" {
+  description = "Custom list of sub-domains to configure. If provided, overrides dev_subdomain/prod_subdomain logic. Each sub-domain maps a branch to a prefix (empty string for root domain)."
+  type = list(object({
+    branch_name = string
+    prefix      = string
+  }))
+  default = null
+}
+
+variable "domain_wait_for_verification" {
+  description = "Whether to wait for domain verification to complete before marking the resource as created."
+  type        = bool
+  default     = true
 }
 
 variable "enable_webhook" {

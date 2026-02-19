@@ -4,57 +4,17 @@ locals {
   api_env_key = var.build_type == "nextjs" ? "NEXT_PUBLIC_API_BASE_URL" : "VITE_API_BASE_URL"
 
   default_env_vars = {
-    ENVIRONMENT          = var.environment
-    APP_ROOT             = var.app_root
-    NODE_VERSION         = var.node_version
-    (local.api_env_key)  = var.backend_base_url
+    ENVIRONMENT         = var.environment
+    APP_ROOT            = var.app_root
+    NODE_VERSION        = var.node_version
+    (local.api_env_key) = var.backend_base_url
   }
 
   branch_env_vars = merge(local.default_env_vars, var.frontend_env_vars)
 
   basic_auth_credentials = var.enable_basic_auth_for_previews ? base64encode("${var.basic_auth_username}:${var.basic_auth_password}") : null
 
-  default_build_spec = var.build_type == "vite" ? <<-EOT
-    version: 1
-    applications:
-      - appRoot: ${var.app_root}
-        frontend:
-          phases:
-            preBuild:
-              commands:
-                - nvm use ${var.node_version} || nvm install ${var.node_version}
-                - npm ci
-            build:
-              commands:
-                - npm run build
-          artifacts:
-            baseDirectory: dist
-            files:
-              - '**/*'
-          cache:
-            paths:
-              - node_modules/**/*
-  EOT : var.build_type == "nextjs" ? <<-EOT
-    version: 1
-    applications:
-      - appRoot: ${var.app_root}
-        frontend:
-          phases:
-            preBuild:
-              commands:
-                - nvm use ${var.node_version} || nvm install ${var.node_version}
-                - npm ci
-            build:
-              commands:
-                - npm run build
-          artifacts:
-            baseDirectory: .next
-            files:
-              - '**/*'
-          cache:
-            paths:
-              - node_modules/**/*
-  EOT : <<-EOT
+  build_spec_vite = <<-EOT
     version: 1
     applications:
       - appRoot: ${var.app_root}
@@ -75,6 +35,52 @@ locals {
             paths:
               - node_modules/**/*
   EOT
+
+  build_spec_nextjs = <<-EOT
+    version: 1
+    applications:
+      - appRoot: ${var.app_root}
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - nvm use ${var.node_version} || nvm install ${var.node_version}
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: .next
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+  EOT
+
+  build_spec_custom = <<-EOT
+    version: 1
+    applications:
+      - appRoot: ${var.app_root}
+        frontend:
+          phases:
+            preBuild:
+              commands:
+                - nvm use ${var.node_version} || nvm install ${var.node_version}
+                - npm ci
+            build:
+              commands:
+                - npm run build
+          artifacts:
+            baseDirectory: dist
+            files:
+              - '**/*'
+          cache:
+            paths:
+              - node_modules/**/*
+  EOT
+
+  default_build_spec = var.build_type == "vite" ? local.build_spec_vite : (var.build_type == "nextjs" ? local.build_spec_nextjs : local.build_spec_custom)
 
   build_spec = coalesce(var.amplify_build_spec, local.default_build_spec)
 
@@ -117,13 +123,82 @@ locals {
   create_webhook = var.app_mode == "webhook" || var.enable_webhook
 }
 
+# IAM role for Amplify build (optional; only when use_amplify_service_role = true)
+resource "aws_iam_role" "amplify_build" {
+  count = var.use_amplify_service_role ? 1 : 0
+
+  name = "${local.name}-build"
+
+  # Trust policy includes regional endpoint (required for some regions) and CodeBuild (Amplify uses CodeBuild)
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = [
+          "amplify.amazonaws.com",
+          "amplify.us-east-1.amazonaws.com",
+          "codebuild.amazonaws.com"
+        ]
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = merge(var.tags, {
+    Name        = "${local.name}-build"
+    Environment = var.environment
+    Component   = "frontend"
+    ManagedBy   = "terraform"
+  })
+}
+
+# Permissions for Amplify build - similar to working module (broader permissions)
+resource "aws_iam_role_policy" "amplify_build" {
+  count = var.use_amplify_service_role ? 1 : 0
+
+  name   = "${local.name}-build"
+  role   = aws_iam_role.amplify_build[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "amplify:*",
+          "s3:*",
+          "cloudfront:*",
+          "codebuild:*",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          "arn:aws:logs:*:*:log-group:/amplify/${local.name}:*",
+          "arn:aws:logs:*:*:log-group:/amplify/${local.name}"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_amplify_app" "this" {
-  name           = local.name
-  repository     = var.app_mode == "connected" ? var.repository_url : null
-  oauth_token    = var.app_mode == "connected" ? var.github_oauth_token : null
-  build_spec     = local.build_spec
-  platform       = var.build_type == "nextjs" ? "WEB_COMPUTE" : "WEB"
-  custom_rules   = local.custom_rules
+  name                 = local.name
+  repository           = var.app_mode == "connected" ? var.repository_url : null
+  oauth_token          = var.app_mode == "connected" ? var.github_oauth_token : null
+  build_spec           = local.build_spec
+  platform             = var.build_type == "nextjs" ? "WEB_COMPUTE" : "WEB"
+  iam_service_role_arn = var.use_amplify_service_role ? aws_iam_role.amplify_build[0].arn : null
+
+  dynamic "custom_rule" {
+    for_each = local.custom_rules
+    content {
+      source = custom_rule.value.source
+      target = custom_rule.value.target
+      status = custom_rule.value.status
+    }
+  }
+
   custom_headers = local.custom_headers
 
   environment_variables = local.default_env_vars
@@ -190,16 +265,40 @@ resource "aws_amplify_branch" "primary" {
   })
 }
 
+# Domain association resource
 resource "aws_amplify_domain_association" "this" {
   count       = var.custom_domain_enabled ? 1 : 0
   app_id      = aws_amplify_app.this.id
   domain_name = var.domain_name
 
   dynamic "sub_domain" {
-    for_each = var.environment == "prod" ? ["", var.prod_subdomain] : [var.dev_subdomain]
+    for_each = var.custom_sub_domains != null ? var.custom_sub_domains : (
+      var.environment == "prod" ? concat(
+        [{
+          branch_name = aws_amplify_branch.primary.branch_name
+          prefix      = ""
+        }],
+        trimspace(var.prod_subdomain) != "" ? [{
+          branch_name = aws_amplify_branch.primary.branch_name
+          prefix      = var.prod_subdomain
+        }] : []
+      ) : [{
+        branch_name = aws_amplify_branch.primary.branch_name
+        prefix      = var.dev_subdomain
+      }]
+    )
     content {
-      branch_name = aws_amplify_branch.primary.branch_name
-      prefix      = sub_domain.value
+      branch_name = sub_domain.value.branch_name
+      prefix      = sub_domain.value.prefix
+    }
+  }
+
+  wait_for_verification = var.domain_wait_for_verification
+
+  lifecycle {
+    precondition {
+      condition     = !var.custom_domain_enabled || (var.domain_name != null && length(trimspace(var.domain_name)) > 0)
+      error_message = "domain_name is required when custom_domain_enabled=true."
     }
   }
 }

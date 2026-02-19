@@ -7,6 +7,14 @@ locals {
     Environment = var.environment
     ManagedBy   = "terraform"
   })
+  
+  root_domain = var.domain_name != null && var.domain_name != "" ? trimsuffix(var.domain_name, ".") : null
+  api_fqdn    = var.domain_name != null && var.domain_name != "" ? "api.${local.root_domain}" : null
+  
+  # Use DNS/ACM module certificate if domain_name is set, otherwise use provided ARN
+  alb_certificate_arn = var.domain_name != null && var.domain_name != "" ? module.dns_acm["dns_acm"].backend_certificate_arn : var.acm_certificate_arn
+  backend_url         = var.domain_name != null && var.domain_name != "" ? module.dns_acm["dns_acm"].backend_url : "http://${module.alb.alb_dns_name}"
+  api_url             = var.domain_name != null && var.domain_name != "" ? "${module.dns_acm["dns_acm"].backend_url}/api/" : "http://${module.alb.alb_dns_name}/api/"
 }
 
 module "network" {
@@ -35,7 +43,8 @@ module "alb" {
   alb_sg_id           = module.security.alb_sg_id
   container_port      = var.container_port
   health_check_path   = "/healthz"
-  acm_certificate_arn = var.acm_certificate_arn
+  acm_certificate_arn = local.alb_certificate_arn
+  enable_https        = (var.domain_name != null && var.domain_name != "") || var.acm_certificate_arn != null
   tags                = local.common_tags
 }
 
@@ -131,30 +140,65 @@ module "oidc" {
   github_repo = var.github_repo
 }
 
-# -----------------------------------------------------------------------------
-# Exemplo: Frontend no AWS Amplify integrado com backend ECS/ALB
-# Ajuste as variáveis conforme seu repositório e domínio.
-# -----------------------------------------------------------------------------
-# module "amplify_frontend" {
-#   source = "../../modules/amplify-frontend"
-#
-#   project_name         = var.project
-#   environment          = var.environment
-#   app_mode             = "connected" # connected (GitHub App/OAuth) ou webhook
-#   repository_url       = "https://github.com/<org>/<repo>"
-#   repository_branch    = "develop"
-#   github_oauth_token   = var.github_oauth_token
-#   build_type           = "vite"
-#   app_root             = "frontend"
-#   backend_base_url     = "https://${module.alb.alb_dns_name}"
-#   enable_pr_previews   = true
-#   custom_domain_enabled = true
-#   domain_name          = "example.com"
-#   dev_subdomain        = "dev"
-#
-#   frontend_env_vars = {
-#     VITE_APP_NAME = "${var.project}-${var.environment}"
-#   }
-#
-#   tags = local.common_tags
-# }
+# DNS and ACM certificates module (consolidates frontend + backend certificates and DNS records)
+module "dns_acm" {
+  for_each = var.domain_name != null && var.domain_name != "" ? { dns_acm = true } : {}
+  
+  source = "../../modules/dns-acm"
+  
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+  
+  domain_name   = var.domain_name
+  name_prefix   = local.name_prefix
+  api_subdomain = "api"
+  
+  frontend_enabled = true
+  backend_enabled  = true
+  
+  # Create Route53 hosted zone if it doesn't exist
+  create_zone = true
+  
+  alb_dns_name = module.alb.alb_dns_name
+  alb_zone_id  = module.alb.alb_zone_id
+  
+  tags = local.common_tags
+}
+
+module "amplify_frontend" {
+  source = "../../modules/amplify-frontend"
+
+  project_name          = var.project
+  environment           = var.environment
+  app_mode              = "connected"
+  repository_url        = "https://github.com/${var.github_org}/${var.github_repo}"
+  repository_branch     = "dev"
+  github_oauth_token    = var.github_oauth_token
+  build_type            = "vite"
+  app_root              = "frontend"
+  backend_base_url      = local.backend_url
+  enable_pr_previews    = true
+  custom_domain_enabled = var.domain_name != null && var.domain_name != ""
+  domain_name           = var.domain_name != null && var.domain_name != "" ? local.root_domain : null
+  domain_wait_for_verification = true
+  
+  # Custom subdomain configuration (root domain only for dev)
+  custom_sub_domains = var.domain_name != null && var.domain_name != "" ? [
+    {
+      branch_name = "dev"
+      prefix      = ""
+    }
+  ] : null
+
+  frontend_env_vars = {
+    VUE_APP_API_URL = local.api_url
+    VITE_APP_NAME   = "${var.project}-${var.environment}"
+  }
+
+  tags = local.common_tags
+  
+  depends_on = [
+    module.dns_acm
+  ]
+}
